@@ -1,0 +1,28 @@
+name: Watch Cardano Token Registry
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # every hour on the hour (UTC)
+  workflow_dispatch:       # allows manual runs
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python dependencies
+        run: pip install requests
+
+      - name: Check for new token registrations
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # auto-provided by GitHub
+          LOOKBACK_HOURS: "2"
+        run: python check_new_tokens.py
