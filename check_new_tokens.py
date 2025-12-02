@@ -7,7 +7,7 @@ REPO = "cardano-foundation/cardano-token-registry"
 PATH = "mappings"
 
 # How far back to look each run (in hours)
-LOOKBACK_HOURS = int(os.getenv("LOOKBACK_HOURS", "2"))
+LOOKBACK_HOURS = int(os.getenv("LOOKBACK_HOURS", "24"))
 
 # GitHub token for higher rate limits (provided automatically in Actions)
 TOKEN = os.getenv("GITHUB_TOKEN")
