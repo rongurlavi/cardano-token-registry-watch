@@ -51,9 +51,8 @@ jobs:
           TS=$(date -u +"%Y-%m-%d %H:%M UTC")
           echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
 
-          # If 🚨 appears, mark new tokens and store count ✅
-          if echo "$OUTPUT" | grep -q "✅"; then
-          # if echo "$OUTPUT" | grep -q "🚨"; then
+          # If 🚨 appears, mark new tokens and store count
+          if echo "$OUTPUT" | grep -q "🚨"; then
             echo "has_new=true" >> "$GITHUB_OUTPUT"
             echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           fi
