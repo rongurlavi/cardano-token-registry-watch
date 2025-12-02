@@ -2,8 +2,8 @@ name: Watch Cardano Token Registry
 
 on:
   schedule:
-    - cron: "0 * * * *"        # run every hour (UTC)
-  workflow_dispatch:            # allow manual runs
+    - cron: "0 * * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -35,17 +35,26 @@ jobs:
           OUTPUT="$(python check_new_tokens.py)"
           echo "$OUTPUT"
 
+          # Save raw output
+          echo "output<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
           # Default: no new tokens
           echo "has_new=false" >> "$GITHUB_OUTPUT"
+          echo "count=0" >> "$GITHUB_OUTPUT"
 
-          # If output contains the alert emoji, mark as has_new and store body
-          # if echo "$OUTPUT" | grep -q "🚨"; then
-          if echo "$OUTPUT" | grep -q "✅"; then
+          # Count lines starting with "-" (your script prints new tokens like "- mappings/...json")
+          COUNT=$(echo "$OUTPUT" | grep -E "^-" | wc -l | tr -d ' ')
+
+          # Timestamp in UTC
+          TS=$(date -u +"%Y-%m-%d %H:%M UTC")
+          echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
+
+          # If 🚨 appears, mark new tokens and store count
+          if echo "$OUTPUT" | grep -q "🚨"; then
             echo "has_new=true" >> "$GITHUB_OUTPUT"
-            # Store the full output as an output variable for the next step
-            echo "body<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$OUTPUT" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
+            echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create GitHub issue for new tokens
@@ -54,12 +63,16 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const body = `${{ toJSON(steps.check.outputs.body) }}`;
+            const count = ${{ steps.check.outputs.count }};
+            const timestamp = `${{ steps.check.outputs.timestamp }}`;
+            const body = `${{ toJSON(steps.check.outputs.output) }}`;
+
+            const title = `New Cardano token registrations detected — ${count} tokens — ${timestamp}`;
 
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `New Cardano token registrations detected`,
+              title: title,
               body: body,
               labels: ['token-registry', 'automation']
             });
