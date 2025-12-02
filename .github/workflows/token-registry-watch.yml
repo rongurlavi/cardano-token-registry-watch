@@ -57,6 +57,7 @@ jobs:
             echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           fi
 
+           # IF new tokens found
       - name: Create GitHub issue for new tokens
         if: steps.check.outputs.has_new == 'true'
         uses: actions/github-script@v7
@@ -67,7 +68,7 @@ jobs:
             const timestamp = `${{ steps.check.outputs.timestamp }}`;
             const body = `${{ toJSON(steps.check.outputs.output) }}`;
 
-            const title = `New Cardano token registrations detected — ${count} tokens — ${timestamp}`;
+            const title = `New Cardano token registrations detected - ${count} tokens - ${timestamp}`;
 
             await github.rest.issues.create({
               owner: context.repo.owner,
@@ -77,13 +78,25 @@ jobs:
               labels: ['token-registry', 'automation']
             });
 
-      - name: Send Slack notification for new tokens
+      - name: Slack notification - new tokens found
         if: steps.check.outputs.has_new == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           COUNT: ${{ steps.check.outputs.count }}
           TIMESTAMP: ${{ steps.check.outputs.timestamp }}
         run: |
-          text="New Cardano token registrations detected - ${COUNT} tokens - ${TIMESTAMP}"
+          text="🚨 New Cardano token registry entries detected - ${COUNT} tokens - ${TIMESTAMP}"
+          json_payload=$(printf '{"text":"%s"}' "$text")
+          curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
+
+
+      # ELSE no new tokens found  (You can comment this out later)
+      - name: Slack notification - no new tokens found
+        if: steps.check.outputs.has_new == 'false'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TIMESTAMP: ${{ steps.check.outputs.timestamp }}
+        run: |
+          text="No new Cardano token registry entries detected - ${TIMESTAMP}"
           json_payload=$(printf '{"text":"%s"}' "$text")
           curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
