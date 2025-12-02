@@ -2,15 +2,15 @@ name: Watch Cardano Token Registry
 
 on:
   schedule:
-    - cron: "0 * * * *"   # every hour on the hour (UTC)
-  workflow_dispatch:       # allows manual runs
+    - cron: "0 * * * *"        # run every hour (UTC)
+  workflow_dispatch:            # allow manual runs
 
 jobs:
-  watch:
+  check-new-tokens:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout this repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -18,11 +18,43 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install Python dependencies
-        run: pip install requests
+      - name: Install dependencies
+        run: |
+          pip install requests
 
-      - name: Check for new token registrations
+      - name: Run check_new_tokens and capture output
+        id: check
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # auto-provided by GitHub
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOOKBACK_HOURS: "2"
-        run: python check_new_tokens.py
+        run: |
+          OUTPUT="$(python check_new_tokens.py)"
+          echo "$OUTPUT"
+
+          # Default: no new tokens
+          echo "has_new=false" >> "$GITHUB_OUTPUT"
+
+          # If output contains the alert emoji, mark as has_new and store body
+          if echo "$OUTPUT" | grep -q "🚨"; then
+            echo "has_new=true" >> "$GITHUB_OUTPUT"
+            # Store the full output as an output variable for the next step
+            echo "body<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUTPUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub issue for new tokens
+        if: steps.check.outputs.has_new == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `${{ toJSON(steps.check.outputs.body) }}`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `New Cardano token registrations detected`,
+              body: body,
+              labels: ['token-registry', 'automation']
+            });
