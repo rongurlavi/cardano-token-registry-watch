@@ -35,7 +35,8 @@ jobs:
           echo "has_new=false" >> "$GITHUB_OUTPUT"
 
           # If output contains the alert emoji, mark as has_new and store body
-          if echo "$OUTPUT" | grep -q "🚨"; then
+          # if echo "$OUTPUT" | grep -q "🚨"; then
+          if echo "$OUTPUT" | grep -q "✅"; then
             echo "has_new=true" >> "$GITHUB_OUTPUT"
             # Store the full output as an output variable for the next step
             echo "body<<EOF" >> "$GITHUB_OUTPUT"
