@@ -76,3 +76,14 @@ jobs:
               body: body,
               labels: ['token-registry', 'automation']
             });
+
+      - name: Send Slack notification for new tokens
+        if: steps.check.outputs.has_new == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          COUNT: ${{ steps.check.outputs.count }}
+          TIMESTAMP: ${{ steps.check.outputs.timestamp }}
+        run: |
+          text="New Cardano token registrations detected - ${COUNT} tokens - ${TIMESTAMP}"
+          json_payload=$(printf '{"text":"%s"}' "$text")
+          curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
