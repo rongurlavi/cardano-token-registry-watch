@@ -91,12 +91,12 @@ jobs:
 
 
       # ELSE no new tokens found  (You can comment this out later)
-      - name: Slack notification - no new tokens found
-        if: steps.check.outputs.has_new == 'false'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          TIMESTAMP: ${{ steps.check.outputs.timestamp }}
-        run: |
-          text="No new Cardano token registry entries detected - ${TIMESTAMP}"
-          json_payload=$(printf '{"text":"%s"}' "$text")
-          curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
+      # - name: Slack notification - no new tokens found
+      #   if: steps.check.outputs.has_new == 'false'
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     TIMESTAMP: ${{ steps.check.outputs.timestamp }}
+      #   run: |
+      #     text="No new Cardano token registry entries detected - ${TIMESTAMP}"
+      #     json_payload=$(printf '{"text":"%s"}' "$text")
+      #     curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
