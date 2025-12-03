@@ -30,7 +30,7 @@ jobs:
         id: check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LOOKBACK_HOURS: "2"
+          LOOKBACK_HOURS: "24"
         run: |
           # Run the Python script and capture its full output
           OUTPUT="$(python check_new_tokens.py)"
