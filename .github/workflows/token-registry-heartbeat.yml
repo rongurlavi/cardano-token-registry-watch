@@ -49,7 +49,7 @@ jobs:
       - name: Slack heartbeat - no registry changes in last 24h
         if: steps.check.outputs.has_new == 'false'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_TEST }}
           TIMESTAMP: ${{ steps.check.outputs.timestamp }}
         run: |
           text="Heartbeat: no new or updated Cardano token registry entries detected in the last 24 hours. Monitoring active as of ${TIMESTAMP}."
