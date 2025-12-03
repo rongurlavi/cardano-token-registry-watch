@@ -2,7 +2,7 @@ name: Watch Cardano Token Registry
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 * * * *"     # every hour
   workflow_dispatch:
 
 permissions:
@@ -31,34 +31,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOOKBACK_HOURS: "2"
-       run: |
+        run: |
+          # Run the Python script and capture its full output
           OUTPUT="$(python check_new_tokens.py)"
           echo "$OUTPUT"
 
-          # Expose the full script output as a multi line job output
+          # Expose the full output as a multi-line job output
           echo "full_message<<EOF" >> "$GITHUB_OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-          # Default: no changes
+          # Default values
           echo "has_new=false" >> "$GITHUB_OUTPUT"
           echo "count=0" >> "$GITHUB_OUTPUT"
 
-          # Count lines starting with "-" (one per token)
+          # Count tokens (each token line starts with "- ")
           COUNT=$(echo "$OUTPUT" | grep -E "^-" | wc -l | tr -d ' ')
 
           # Timestamp in UTC
           TS=$(date -u +"%Y-%m-%d %H:%M UTC")
           echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
 
-          # If alert marker present, mark as has_new and store count
+          # Detect alert marker
           if echo "$OUTPUT" | grep -q "🚨"; then
             echo "has_new=true" >> "$GITHUB_OUTPUT"
             echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           fi
 
-           # IF new tokens found
-      - name: Create GitHub issue for new tokens
+      - name: Create GitHub issue for new or updated tokens
         if: steps.check.outputs.has_new == 'true'
         uses: actions/github-script@v7
         with:
@@ -66,9 +66,9 @@ jobs:
           script: |
             const count = ${{ steps.check.outputs.count }};
             const timestamp = `${{ steps.check.outputs.timestamp }}`;
-            const body = `${{ toJSON(steps.check.outputs.output) }}`;
+            const body = ${{ toJSON(steps.check.outputs.full_message) }};
 
-            const title = `New Cardano token registrations detected - ${count} tokens - ${timestamp}`;
+            const title = `New or updated Cardano token registry entries detected - ${count} tokens - ${timestamp}`;
 
             await github.rest.issues.create({
               owner: context.repo.owner,
@@ -78,32 +78,20 @@ jobs:
               labels: ['token-registry', 'automation']
             });
 
-      - name: Slack notification for new tokens
+      - name: Slack notification for new or updated tokens
         if: steps.check.outputs.has_new == 'true'
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # for production
+          #SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # for testing
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_TEST }}
           SLACK_TEXT: ${{ steps.check.outputs.full_message }}
         run: |
+          # Safely JSON-encode the multi-line text for Slack
           payload=$(python - << 'EOF'
           import json, os
           text = os.environ["SLACK_TEXT"]
           print(json.dumps({"text": text}))
           EOF
           )
-          # production
-          #curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
-          # for testing
-          curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_TEST"
-
-
-
-      # ELSE no new tokens found  (You can comment this out later)
-      # - name: Slack notification - no new tokens found
-      #   if: steps.check.outputs.has_new == 'false'
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      #     TIMESTAMP: ${{ steps.check.outputs.timestamp }}
-      #   run: |
-      #     text="No new Cardano token registry entries detected - ${TIMESTAMP}"
-      #     json_payload=$(printf '{"text":"%s"}' "$text")
-      #     curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
+          curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
