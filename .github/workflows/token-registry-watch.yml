@@ -30,7 +30,7 @@ jobs:
         id: check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LOOKBACK_HOURS: "48"
+          LOOKBACK_HOURS: "2"
         run: |
           # Run the Python script and capture its full output
           OUTPUT="$(python check_new_tokens.py)"
@@ -82,9 +82,9 @@ jobs:
         if: steps.check.outputs.has_new == 'true'
         env:
           # for production
-          #SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           # for testing
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_TEST }}
+          #SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_TEST }}
           SLACK_TEXT: ${{ steps.check.outputs.full_message }}
         run: |
           # Safely JSON-encode the multi-line text for Slack
