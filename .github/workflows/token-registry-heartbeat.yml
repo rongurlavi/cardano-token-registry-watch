@@ -1,0 +1,57 @@
+name: Cardano Token Registry Heartbeat
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # once per day at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run check_new_tokens for last 24 hours
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOOKBACK_HOURS: "24"
+        run: |
+          OUTPUT="$(python check_new_tokens.py)"
+          echo "$OUTPUT"
+
+          # default assumption: no new or updated tokens
+          echo "has_new=false" >> "$GITHUB_OUTPUT"
+
+          # mark as has_new if the alert marker appears
+          if echo "$OUTPUT" | grep -q "🚨"; then
+            echo "has_new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # heartbeat timestamp
+          TS=$(date -u +"%Y-%m-%d %H:%M UTC")
+          echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
+
+      - name: Slack heartbeat - no registry changes in last 24h
+        if: steps.check.outputs.has_new == 'false'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TIMESTAMP: ${{ steps.check.outputs.timestamp }}
+        run: |
+          text="Heartbeat: no new or updated Cardano token registry entries detected in the last 24 hours. Monitoring active as of ${TIMESTAMP}."
+          json_payload=$(printf '{"text":"%s"}' "$text")
+          curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
