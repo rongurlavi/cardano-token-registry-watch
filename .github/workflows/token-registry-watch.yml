@@ -31,27 +31,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOOKBACK_HOURS: "2"
-        run: |
+       run: |
           OUTPUT="$(python check_new_tokens.py)"
           echo "$OUTPUT"
 
-          # Save raw output
-          echo "output<<EOF" >> "$GITHUB_OUTPUT"
+          # Expose the full script output as a multi line job output
+          echo "full_message<<EOF" >> "$GITHUB_OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-          # Default: no new tokens
+          # Default: no changes
           echo "has_new=false" >> "$GITHUB_OUTPUT"
           echo "count=0" >> "$GITHUB_OUTPUT"
 
-          # Count lines starting with "-" (your script prints new tokens like "- mappings/...json")
+          # Count lines starting with "-" (one per token)
           COUNT=$(echo "$OUTPUT" | grep -E "^-" | wc -l | tr -d ' ')
 
           # Timestamp in UTC
           TS=$(date -u +"%Y-%m-%d %H:%M UTC")
           echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
 
-          # If 🚨 appears, mark new tokens and store count
+          # If alert marker present, mark as has_new and store count
           if echo "$OUTPUT" | grep -q "🚨"; then
             echo "has_new=true" >> "$GITHUB_OUTPUT"
             echo "count=$COUNT" >> "$GITHUB_OUTPUT"
@@ -78,16 +78,20 @@ jobs:
               labels: ['token-registry', 'automation']
             });
 
-      - name: Slack notification - new tokens found
+      - name: Slack notification for new tokens
         if: steps.check.outputs.has_new == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          COUNT: ${{ steps.check.outputs.count }}
-          TIMESTAMP: ${{ steps.check.outputs.timestamp }}
+          SLACK_TEXT: ${{ steps.check.outputs.full_message }}
         run: |
-          text="🚨 New Cardano token registry entries detected - ${COUNT} tokens - ${TIMESTAMP}"
-          json_payload=$(printf '{"text":"%s"}' "$text")
-          curl -X POST -H 'Content-type: application/json' --data "$json_payload" "$SLACK_WEBHOOK_URL"
+          payload=$(python - << 'EOF'
+          import json, os
+          text = os.environ["SLACK_TEXT"]
+          print(json.dumps({"text": text}))
+          EOF
+          )
+          curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+
 
 
       # ELSE no new tokens found  (You can comment this out later)
