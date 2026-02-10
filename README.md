@@ -2,6 +2,7 @@
 
 This repository provides automated monitoring of the Cardano Token Registry. It detects new token registrations, updates to existing token metadata, and tokens resembling the Midnight ecosystem (including NIGHT, CNIGHT and similar variants). Alerts are delivered through GitHub Issues and Slack notifications.
 
+
 ## What It Does
 
 1. Monitors the Cardano Foundation’s official token registry under `mappings/` in the repository
